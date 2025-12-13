@@ -583,10 +583,24 @@ function copyLog() {
 function replayImportedLog() {
   const logText = document.getElementById('importLogText').value.trim();
   if (!logText) return alert('Log kosong');
+
+  const fileAktif = dropdownEl.value || '(default)';
+
+  if (!confirm(
+    `Replay log hanya akan diterapkan ke file AKTIF:\n\n` +
+    `📂 ${fileAktif}\n\n` +
+    `File lain TIDAK akan berubah.\n\nLanjutkan?`
+  )) return;
+
   replayLog(logText);
   closeImportLog();
-  showToast('✅ Log berhasil diterapkan', '#008000');
+
+  showToast(
+    `✅ Log diterapkan ke file:\n${fileAktif}`,
+    '#008000'
+  );
 }
+
 
 function resetAuditLogConfirm() {
   if (!confirm(
