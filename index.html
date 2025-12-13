@@ -274,14 +274,24 @@ function showPage(page) {
   outputEl.innerHTML = allPages[page - 1].map(l => {
     const reportUrl = `https://niddumulu.github.io/shope-tools/lapor/index.html?link=${encodeURIComponent(l)}&file=${encodeURIComponent(fileNow)}`;
     return `<div class="link-item">
-          <a class="link" href="${l}" target="_blank">${l}</a>
-          <a class="report" href="${reportUrl}" target="_blank">Laporkan</a>
-          <a href="javascript:void(0)" 
-             class="report" 
-             onclick="turunkanLink('${l.replace(/'/g, "\\'")}')">
-             Turunkan
-          </a>
-        </div>`;
+  <a class="link" href="${l}" target="_blank">${l}</a>
+
+  <a class="report"
+     href="${reportUrl}"
+     target="_blank"
+     title="Laporkan produk bermasalah">
+     🚩
+  </a>
+
+  <a href="javascript:void(0)"
+     class="report"
+     title="Turunkan ke urutan paling akhir"
+     onclick="turunkanLink('${l.replace(/'/g, "\\'")}')">
+     ⬇️
+  </a>
+</div>`;
+
+
 
   }).join('');
   outputEl.style.display = 'block';
