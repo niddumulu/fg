@@ -145,6 +145,9 @@
 <div id="toast"></div>
 
 <script>
+const AUDIT_LOG_KEY = 'bgAuditLog';
+let baselineHash = '';
+
 const MAX_PER_PAGE = 99;
 const PAGE_OFFSET = 0;
 let allPages = [];
@@ -155,6 +158,43 @@ const statsEl = document.getElementById('stats');
 const outputEl = document.getElementById('output');
 const paginationEl = document.getElementById('pagination');
 const dropdownEl = document.getElementById('fileDropdown');
+
+function simpleHash(text) {
+  let hash = 0;
+  for (let i = 0; i < text.length; i++) {
+    hash = ((hash << 5) - hash) + text.charCodeAt(i);
+    hash |= 0;
+  }
+  return hash.toString();
+}
+
+function getProductId(link) {
+  const m = link.match(/product\/(\d+)\/(\d+)/);
+  return m ? `${m[1]}_${m[2]}` : null;
+}
+
+
+function appendAuditLog(entry) {
+  const old = localStorage.getItem(AUDIT_LOG_KEY) || '';
+  localStorage.setItem(AUDIT_LOG_KEY, old + entry + '\n');
+}
+
+function appendAuditLogV2(action, payload = {}) {
+  const entry = {
+    v: 2,
+    action,
+    file: dropdownEl.value || 'default',
+    pid: payload.pid || null,
+    from: payload.from ?? null,
+    to: payload.to ?? null,
+    base: baselineHash || null,
+    ts: Date.now()
+  };
+  const old = localStorage.getItem(AUDIT_LOG_KEY) || '';
+  localStorage.setItem(AUDIT_LOG_KEY, old + JSON.stringify(entry) + '\n');
+}
+
+
 
 /* ✅ FUNGSI TOAST */
 function showToast(message, color = '#333') {
@@ -319,6 +359,7 @@ function copyToClipboard() {
   const text = allPages[currentPage - 1].join('\n');
   navigator.clipboard.writeText(text).then(() => showToast('✅ Link halaman ini disalin!', '#008000'));
 }
+
 function turunkanLink(link) {
   let lines = inputLinksEl.value
     .split('\n')
@@ -328,20 +369,72 @@ function turunkanLink(link) {
   const idx = lines.indexOf(link);
   if (idx === -1) return;
 
-  // hapus dari posisi lama
-  lines.splice(idx, 1);
+  const pid = getProductId(link);
+  if (!pid) return;
 
-  // taruh di PALING AKHIR URUTAN
+  // pindahkan ke akhir
+  lines.splice(idx, 1);
   lines.push(link);
 
-  inputLinksEl.value = lines.join('\n');
+  const currentHash = simpleHash(lines.join('\n'));
 
+  if (baselineHash && currentHash !== baselineHash) {
+    appendAuditLogV2('MOVE', {
+      pid,
+      from: idx,
+      to: 'LAST'
+    });
+  }
+
+  inputLinksEl.value = lines.join('\n');
   processLinks();
   showPage(currentPage);
   saveAppData();
 
   showToast('⬇️ Link dipindahkan ke urutan paling akhir', '#b36b00');
 }
+
+
+
+function replayLog(logText) {
+  const entries = logText
+    .split('\n')
+    .map(l => l.trim())
+    .filter(Boolean);
+
+  let data = inputLinksEl.value
+    .split('\n')
+    .map(l => l.trim())
+    .filter(Boolean);
+
+  for (const row of entries) {
+    let entry;
+    try {
+      entry = JSON.parse(row);
+    } catch {
+      continue; // skip log lama
+    }
+
+    if (entry.v !== 2 || entry.action !== 'MOVE') continue;
+
+    const idx = data.findIndex(l => getProductId(l) === entry.pid);
+    if (idx === -1) continue;
+
+    const link = data.splice(idx, 1)[0];
+
+    if (entry.to === 'LAST') {
+      data.push(link);
+    } else if (Number.isInteger(entry.to)) {
+      data.splice(entry.to, 0, link);
+    }
+  }
+
+  inputLinksEl.value = data.join('\n');
+  processLinks();
+  showPage(1);
+  saveAppData();
+}
+
 
 
 /* ===== Backup & Import ===== */
@@ -441,6 +534,8 @@ async function checkForUpdates() {
     const res = await fetch(selectedFile + '?check=' + Date.now(), { cache: 'no-store' });
     if (!res.ok) throw new Error('HTTP ' + res.status);
     const serverText = (await res.text()).trim();
+	baselineHash = simpleHash(serverText);
+
 
     const localKey = 'appData_' + selectedFile;
     const localData = JSON.parse(localStorage.getItem(localKey) || '{}');
@@ -459,6 +554,166 @@ async function checkForUpdates() {
     noticeEl.style.color = '#b30000';
   }
 }
+
+function openImportLogPopup() {
+  document.getElementById('importLogPopup').style.display = 'block';
+}
+function closeImportLog() {
+  document.getElementById('importLogPopup').style.display = 'none';
+}
+
+
+function openLogPopup() {
+  const log = localStorage.getItem(AUDIT_LOG_KEY) || '';
+  document.getElementById('logText').value = log || '(log kosong)';
+  document.getElementById('logPopup').style.display = 'block';
+}
+
+function closeLogPopup() {
+  document.getElementById('logPopup').style.display = 'none';
+}
+
+function copyLog() {
+  const ta = document.getElementById('logText');
+  ta.select();
+  document.execCommand('copy');
+  alert('Log berhasil dicopy');
+}
+
+function replayImportedLog() {
+  const logText = document.getElementById('importLogText').value.trim();
+  if (!logText) return alert('Log kosong');
+  replayLog(logText);
+  closeImportLog();
+  showToast('✅ Log berhasil diterapkan', '#008000');
+}
+
+function resetAuditLogConfirm() {
+  if (!confirm(
+    'Reset Audit Log?\n\n' +
+    '• Semua log perubahan akan dihapus\n' +
+    '• Kondisi saat ini dijadikan baseline baru\n\n' +
+    'Tindakan ini TIDAK bisa dibatalkan.\n\n' +
+    'Lanjutkan?'
+  )) return;
+
+  resetAuditLog();
+}
+
+function resetAuditLog() {
+  // hapus audit log
+  localStorage.removeItem(AUDIT_LOG_KEY);
+
+  // buat baseline baru dari kondisi saat ini
+  const lines = inputLinksEl.value
+    .split('\n')
+    .map(l => l.trim())
+    .filter(Boolean)
+    .join('\n');
+
+  baselineHash = simpleHash(lines);
+  localStorage.setItem('baselineHash', baselineHash);
+
+  showToast('🗑 Audit log direset.\nBaseline baru dibuat.', '#008000');
+}
+
+
 </script>
+
+<!-- ================= LOG CONTROLS ================= -->
+<div id="logControls" style="
+  position:fixed;
+  bottom:8px;
+  right:8px;
+  display:flex;
+  gap:6px;
+  z-index:9999;
+  opacity:0.45;
+">
+  <button onclick="openLogPopup()" title="Audit Log"
+    style="font-size:11px;padding:4px 6px;">
+    🧾 Log
+  </button>
+
+  <button onclick="openImportLogPopup()" title="Import & Replay Log"
+    style="font-size:11px;padding:4px 6px;">
+    📥 Import
+  </button>
+
+  <!-- ✅ TOMBOL RESET LOG -->
+  <button onclick="resetAuditLogConfirm()" title="Reset Audit Log"
+    style="font-size:11px;padding:4px 6px;color:#b30000;">
+    🗑 Reset
+  </button>
+</div>
+
+
+<!-- ================= AUDIT LOG POPUP ================= -->
+<div id="logPopup" style="
+  display:none;
+  position:fixed;
+  inset:0;
+  background:rgba(0,0,0,.4);
+  z-index:10000;
+">
+  <div style="
+    background:#fff;
+    max-width:600px;
+    margin:8% auto;
+    padding:10px;
+    border-radius:6px;
+  ">
+    <div style="display:flex;justify-content:space-between;align-items:center">
+      <strong>Audit Log</strong>
+      <button onclick="closeLogPopup()">✖</button>
+    </div>
+
+    <textarea id="logText" style="
+      width:100%;
+      height:220px;
+      margin-top:8px;
+      font-size:12px;
+    " readonly></textarea>
+
+    <button onclick="copyLog()" style="margin-top:6px">
+      📋 Copy Log
+    </button>
+  </div>
+</div>
+
+<!-- ================= IMPORT LOG POPUP ================= -->
+<div id="importLogPopup" style="
+  display:none;
+  position:fixed;
+  inset:0;
+  background:rgba(0,0,0,.4);
+  z-index:10001;
+">
+  <div style="
+    background:#fff;
+    max-width:600px;
+    margin:8% auto;
+    padding:10px;
+    border-radius:6px;
+  ">
+    <div style="display:flex;justify-content:space-between;align-items:center">
+      <strong>Import & Replay Log</strong>
+      <button onclick="closeImportLog()">✖</button>
+    </div>
+
+    <textarea id="importLogText" style="
+      width:100%;
+      height:220px;
+      margin-top:8px;
+      font-size:12px;
+    " placeholder="Paste log di sini..."></textarea>
+
+    <button onclick="replayImportedLog()" style="margin-top:6px">
+      ▶ Terapkan Log
+    </button>
+  </div>
+</div>
+
+
 </body>
 </html>
