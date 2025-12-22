@@ -694,7 +694,7 @@ function hapusKeHalaman(link) {
 function openDeletedPage() {
   const deleted = getDeletedLinks();
   
-  document.getElementById('copyBtn').disabled = false;
+  document.getElementById('copyBtn').disabled = true;
 
 
   if (!deleted.length) {
