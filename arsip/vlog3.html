@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Manajemen Akun Gmail - Versi Final</title>
+<title>Manajemen Akun Gmail - Versi Upgrade</title>
 <style>
   body { font-family: Arial, sans-serif; margin: 10px; padding-bottom: 50px; }
   h1 { text-align: center; margin-bottom: 20px; }
@@ -62,6 +62,19 @@ function renderPhones() {
       const accDiv = phoneDiv.querySelector('.accounts');
       accDiv.style.display = accDiv.style.display === 'none' ? 'block' : 'none';
     };
+
+    // Tombol hapus HP
+    const delHPBtn = document.createElement('button');
+    delHPBtn.textContent = 'Hapus HP';
+    delHPBtn.onclick = e => {
+      e.stopPropagation();
+      if(confirm(`Hapus HP "${phone.name}" beserta semua akun?`)){
+        data.phones.splice(pIndex,1);
+        saveData();
+        renderPhones();
+      }
+    };
+    header.appendChild(delHPBtn);
     phoneDiv.appendChild(header);
 
     const accountsDiv = document.createElement('div');
@@ -93,7 +106,19 @@ function renderPhones() {
       editBtn.onclick = () => showEditForm(pIndex, aIndex, accDiv, acc);
       btnDiv.appendChild(editBtn);
 
-      // Hapus akun jika terjual
+      // Hapus akun manual
+      const delBtn = document.createElement('button');
+      delBtn.textContent = 'Hapus';
+      delBtn.onclick = () => {
+        if(confirm(`Hapus akun "${acc.email}"?`)){
+          data.phones[pIndex].accounts.splice(aIndex,1);
+          saveData();
+          renderPhones();
+        }
+      };
+      btnDiv.appendChild(delBtn);
+
+      // Hapus otomatis jika terjual
       if(acc.status === 'tersedia'){
         const sellBtn = document.createElement('button');
         sellBtn.textContent = 'Terjual';
@@ -154,7 +179,6 @@ function renderPhones() {
 
 // ===== EDIT FORM =====
 function showEditForm(pIndex,aIndex,accDiv,acc){
-  // jika form sudah ada, jangan duplikat
   if(accDiv.querySelector('.edit-form')) return;
 
   const form = document.createElement('form');
@@ -165,7 +189,6 @@ function showEditForm(pIndex,aIndex,accDiv,acc){
     const newSource = form.querySelector('.source').value;
     const newPhone = parseInt(form.querySelector('.phoneSelect').value);
 
-    // pindah HP jika beda
     let accountData = {...acc, status:newStatus, source:newSource};
     if(newPhone !== pIndex){
       data.phones[newPhone].accounts.push(accountData);
@@ -202,7 +225,6 @@ function showEditForm(pIndex,aIndex,accDiv,acc){
 
   const submitBtn = document.createElement('button');
   submitBtn.textContent = 'Simpan';
-
   form.append(statusSelect, sourceSelect, phoneSelect, submitBtn);
   accDiv.appendChild(form);
 }
