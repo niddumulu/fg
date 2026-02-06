@@ -3,259 +3,166 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Manajemen Akun Gmail Lengkap</title>
+<title>Manajemen Gmail - Milik Sendiri / Orang Lain</title>
 <style>
-  body { font-family: Arial, sans-serif; margin: 10px; padding-bottom: 50px; }
-  h1 { text-align: center; margin-bottom: 20px; }
-  .phone { border: 1px solid #ccc; border-radius: 6px; margin-bottom: 15px; overflow: hidden; }
-  .phone-header { background: #f0f0f0; padding: 10px; font-weight: bold; font-size: 16px; cursor: pointer; display: flex; justify-content: space-between; align-items: center; }
-  .accounts { display: none; padding: 10px; background: #fafafa; }
-  .account { display: flex; justify-content: space-between; align-items: center; padding: 6px 0; border-bottom: 1px solid #eee; flex-wrap: wrap; }
-  .account-info { display: flex; align-items: center; flex-wrap: wrap; gap: 5px; }
-  .status { padding: 2px 6px; border-radius: 4px; color: #fff; font-size: 12px; }
-  .tersedia { background-color: green; }
-  .sedang-dikirim { background-color: orange; }
-  .terjual { background-color: gray; }
-  .ditolak { background-color: red; }
-  .source { font-size: 12px; padding: 2px 6px; border-radius: 4px; background: #007bff; color: #fff; }
-  .price { font-size:12px; padding:2px 6px; border-radius:4px; background:#28a745; color:#fff; }
-  button, select, input { margin: 2px 0; }
-  input, select, button { width: 100%; padding: 6px; border-radius: 4px; border: 1px solid #ccc; box-sizing: border-box; }
-  .form-inline { display: flex; flex-direction: column; gap: 5px; margin-top: 5px; }
-  .edit-form { display: flex; flex-direction: column; gap: 5px; margin-top: 5px; background: #f9f9f9; padding: 5px; border-radius: 4px; }
-  @media(min-width:600px){
-    .form-inline { flex-direction: row; gap: 5px; }
-    .form-inline input, .form-inline select { flex: 1; }
-    .account-info { gap: 10px; }
-  }
+  body { font-family: Arial, sans-serif; margin: 10px; padding-bottom:50px;}
+  h1 { text-align:center; margin-bottom:20px; }
+  .unit { border:1px solid #ccc; border-radius:6px; margin-bottom:15px; overflow:hidden; }
+  .unit-header { background:#f0f0f0; padding:10px; font-weight:bold; cursor:pointer; display:flex; justify-content:space-between; align-items:center;}
+  .accounts { display:none; padding:10px; background:#fafafa; }
+  .account { display:flex; justify-content:space-between; flex-wrap:wrap; padding:5px 0; border-bottom:1px solid #eee;}
+  .account-info { display:flex; flex-wrap:wrap; gap:5px; align-items:center; }
+  .status { padding:2px 6px; border-radius:4px; color:#fff; font-size:12px; }
+  .tersedia { background-color:green; }
+  .sedang-dikirim { background-color:orange; }
+  .terjual { background-color:gray; }
+  .ditolak { background-color:red; }
+  .source { font-size:12px; padding:2px 6px; border-radius:4px; background:#007bff; color:#fff; }
+  .btn { margin:2px; padding:2px 5px; cursor:pointer; }
+  input, select, button { padding:6px; border-radius:4px; border:1px solid #ccc; box-sizing:border-box; margin:2px 0; }
+  .form-inline { display:flex; flex-direction:column; gap:5px; margin-top:5px; }
+  .edit-form { display:flex; flex-direction:column; gap:5px; margin-top:5px; background:#f9f9f9; padding:5px; border-radius:4px; }
+  @media(min-width:600px){ .form-inline{flex-direction:row; gap:5px;} .form-inline input, .form-inline select { flex:1;} }
+  .summary { background:#e9e9e9; padding:10px; margin-bottom:10px; border-radius:6px; }
 </style>
 </head>
 <body>
 
-<h1>Manajemen Akun Gmail Lengkap</h1>
+<h1>Manajemen Gmail</h1>
 
-<!-- Form tambah HP -->
-<form id="addPhoneForm" class="form-inline">
-  <input type="text" id="phoneName" placeholder="Nama HP baru" required>
-  <button type="submit">Tambah HP</button>
+<!-- Form tambah HP/Unit -->
+<form id="addUnitForm" class="form-inline">
+  <input type="text" id="unitName" placeholder="Nama Unit / HP" required>
+  <select id="unitType" required>
+    <option value="">Pilih tipe</option>
+    <option value="sendiri">Milik Sendiri</option>
+    <option value="orang lain">Milik Orang Lain</option>
+  </select>
+  <button type="submit">Tambah Unit</button>
 </form>
 
-<div id="phonesContainer"></div>
+<div id="summaryContainer"></div>
+<div id="unitsContainer"></div>
 
 <script>
 // ===== DATA & LOCALSTORAGE =====
-let data = JSON.parse(localStorage.getItem('gmailManager')) || { phones: [] };
+let data = JSON.parse(localStorage.getItem('gmailManager')) || { units: [] };
 function saveData(){ localStorage.setItem('gmailManager', JSON.stringify(data)); }
 
-// ===== RENDER =====
-function renderPhones(){
-  const container = document.getElementById('phonesContainer');
-  container.innerHTML = '';
+// ===== RENDER SUMMARY =====
+function renderSummary(){
+  const container = document.getElementById('summaryContainer');
+  container.innerHTML='';
+  let total=0, tersedia=0, kirim=0, terjual=0, ditolak=0;
+  data.units.forEach(u=>{
+    u.accounts.forEach(a=>{
+      total++;
+      if(a.status==='tersedia') tersedia++;
+      else if(a.status==='sedang dikirim') kirim++;
+      else if(a.status==='terjual') terjual++;
+      else if(a.status==='ditolak') ditolak++;
+    });
+  });
+  container.innerHTML=`<div class="summary">
+    <strong>Rekap Akun:</strong> Total: ${total}, Tersedia: ${tersedia}, Sedang Dikirim: ${kirim}, Terjual: ${terjual}, Ditolak: ${ditolak}
+  </div>`;
+}
 
-  data.phones.forEach((phone,pIndex)=>{
-    const phoneDiv = document.createElement('div');
-    phoneDiv.className = 'phone';
+// ===== RENDER UNITS =====
+function renderUnits(){
+  renderSummary();
+  const container=document.getElementById('unitsContainer');
+  container.innerHTML='';
+  data.units.forEach((unit,uIndex)=>{
+    const unitDiv=document.createElement('div'); unitDiv.className='unit';
+    const header=document.createElement('div'); header.className='unit-header';
+    header.innerHTML=`${unit.name} (${unit.type}) <span>${unit.accounts.length} akun</span>`;
+    header.onclick=()=>{ const accDiv=unitDiv.querySelector('.accounts'); accDiv.style.display=accDiv.style.display==='none'?'block':'none'; };
+    const delBtn=document.createElement('button'); delBtn.textContent='Hapus Unit'; delBtn.className='btn';
+    delBtn.onclick=e=>{ e.stopPropagation(); if(confirm(`Hapus Unit "${unit.name}" beserta semua akun?`)){ data.units.splice(uIndex,1); saveData(); renderUnits();} };
+    header.appendChild(delBtn);
+    unitDiv.appendChild(header);
 
-    const header = document.createElement('div');
-    header.className = 'phone-header';
-    header.innerHTML = `${phone.name} <span>${phone.accounts.length} akun</span>`;
-    header.onclick = ()=> {
-      const accDiv = phoneDiv.querySelector('.accounts');
-      accDiv.style.display = accDiv.style.display==='none'?'block':'none';
-    };
+    const accDiv=document.createElement('div'); accDiv.className='accounts';
+    unit.accounts.forEach((acc,aIndex)=>{
+      const accItem=document.createElement('div'); accItem.className='account';
+      const info=document.createElement('div'); info.className='account-info';
+      const emailSpan=document.createElement('span'); emailSpan.textContent=acc.email;
+      const statusSpan=document.createElement('span'); statusSpan.className='status '+(acc.status==='sedang dikirim'?'sedang-dikirim':acc.status); statusSpan.textContent=acc.status;
+      const sourceSpan=document.createElement('span'); sourceSpan.className='source'; sourceSpan.textContent=acc.source;
+      info.append(emailSpan,statusSpan,sourceSpan);
 
-    // tombol hapus HP
-    const delHPBtn = document.createElement('button');
-    delHPBtn.textContent = 'Hapus HP';
-    delHPBtn.onclick = e=>{
-      e.stopPropagation();
-      if(confirm(`Hapus HP "${phone.name}" beserta semua akun?`)){
-        data.phones.splice(pIndex,1);
-        saveData();
-        renderPhones();
-      }
-    };
-    header.appendChild(delHPBtn);
-    phoneDiv.appendChild(header);
-
-    const accountsDiv = document.createElement('div');
-    accountsDiv.className = 'accounts';
-
-    // list akun
-    phone.accounts.forEach((acc,aIndex)=>{
-      const accDiv = document.createElement('div');
-      accDiv.className = 'account';
-
-      const infoDiv = document.createElement('div');
-      infoDiv.className = 'account-info';
-      const emailSpan = document.createElement('span');
-      emailSpan.textContent = acc.email;
-      const statusSpan = document.createElement('span');
-      statusSpan.className = 'status '+(acc.status==='sedang dikirim'?'sedang-dikirim':acc.status);
-      statusSpan.textContent = acc.status;
-      const sourceSpan = document.createElement('span');
-      sourceSpan.className='source';
-      sourceSpan.textContent=acc.source;
-      const priceSpan = document.createElement('span');
-      priceSpan.className='price';
-      if(acc.source==='beli'){
-        priceSpan.textContent=`Beli:${acc.buy||'-'} / Jual:${acc.sell||'-'}`;
-      }
-
-      infoDiv.append(emailSpan,statusSpan,sourceSpan,priceSpan);
-
-      const btnDiv = document.createElement('div');
-
-      // Edit akun
-      const editBtn = document.createElement('button');
-      editBtn.textContent='Edit';
-      editBtn.onclick = ()=>showEditForm(pIndex,aIndex,accDiv,acc);
+      const btnDiv=document.createElement('div');
+      const editBtn=document.createElement('button'); editBtn.textContent='Edit'; editBtn.className='btn';
+      editBtn.onclick=()=>showEditForm(uIndex,aIndex,accItem,acc);
       btnDiv.appendChild(editBtn);
+      const delAccBtn=document.createElement('button'); delAccBtn.textContent='Hapus'; delAccBtn.className='btn';
+      delAccBtn.onclick=()=>{ if(confirm(`Hapus akun ${acc.email}?`)){ data.units[uIndex].accounts.splice(aIndex,1); saveData(); renderUnits(); } };
+      btnDiv.appendChild(delAccBtn);
 
-      // Hapus akun manual
-      const delBtn=document.createElement('button');
-      delBtn.textContent='Hapus';
-      delBtn.onclick=()=>{
-        if(confirm(`Hapus akun "${acc.email}"?`)){
-          data.phones[pIndex].accounts.splice(aIndex,1);
-          saveData();
-          renderPhones();
-        }
-      };
-      btnDiv.appendChild(delBtn);
-
-      // Hapus otomatis jika tersedia + langsung dijual
-      if(acc.status==='tersedia'){
-        const sellBtn = document.createElement('button');
-        sellBtn.textContent='Terjual';
-        sellBtn.onclick=()=>{
-          data.phones[pIndex].accounts.splice(aIndex,1);
-          saveData();
-          renderPhones();
-        };
-        btnDiv.appendChild(sellBtn);
-      }
-
-      accDiv.append(infoDiv,btnDiv);
-      accountsDiv.appendChild(accDiv);
+      accItem.append(info,btnDiv); accDiv.appendChild(accItem);
     });
 
-    // Form tambah akun inline per HP
-    const addForm=document.createElement('form');
-    addForm.className='form-inline';
+    // Form tambah akun per unit
+    const addForm=document.createElement('form'); addForm.className='form-inline';
     addForm.onsubmit=e=>{
       e.preventDefault();
-      const email = addForm.querySelector('.email').value.trim();
-      const source = addForm.querySelector('.source').value;
-      const status = addForm.querySelector('.status').value;
-      const buy = addForm.querySelector('.buy')?.value;
-      const sell = addForm.querySelector('.sell')?.value;
-      if(!email || !source || !status) return;
-      const newAcc={email,source,status};
-      if(source==='beli'){
-        newAcc.buy=buy||0;
-        newAcc.sell=sell||0;
-      }
-      data.phones[pIndex].accounts.push(newAcc);
-      saveData();
-      renderPhones();
+      const email=addForm.querySelector('.email').value.trim();
+      const status=addForm.querySelector('.status').value;
+      if(!email || !status) return;
+      const newAcc={email,status};
+      newAcc.source=unit.type==='sendiri'?'buat sendiri':'beli';
+      data.units[uIndex].accounts.push(newAcc); saveData(); renderUnits();
     };
-
     const emailInput=document.createElement('input'); emailInput.placeholder='Email Gmail'; emailInput.className='email'; emailInput.required=true;
-    const sourceSelect=document.createElement('select'); sourceSelect.className='source'; sourceSelect.required=true;
-    sourceSelect.innerHTML=`<option value="">Asal Akun</option>
-                            <option value="buat sendiri">Buat Sendiri</option>
-                            <option value="beli">Beli</option>`;
     const statusSelect=document.createElement('select'); statusSelect.className='status'; statusSelect.required=true;
-    statusSelect.innerHTML=`<option value="">Status</option>
-                            <option value="tersedia">Tersedia</option>
-                            <option value="sedang dikirim">Sedang Dikirim</option>
-                            <option value="terjual">Terjual</option>
-                            <option value="ditolak">Ditolak</option>`;
-    // input harga beli/jual muncul jika pilih beli
-    const buyInput=document.createElement('input'); buyInput.placeholder='Harga Beli'; buyInput.className='buy';
-    const sellInput=document.createElement('input'); sellInput.placeholder='Harga Jual'; sellInput.className='sell';
-
-    sourceSelect.onchange=()=>{ 
-      if(sourceSelect.value==='beli'){ addForm.append(buyInput,sellInput); }
-      else{ if(addForm.contains(buyInput)) addForm.removeChild(buyInput);
-            if(addForm.contains(sellInput)) addForm.removeChild(sellInput); }
-    };
-
+    statusSelect.innerHTML=`<option value="">Status</option><option value="tersedia">Tersedia</option><option value="sedang dikirim">Sedang Dikirim</option><option value="terjual">Terjual</option><option value="ditolak">Ditolak</option>`;
     const submitBtn=document.createElement('button'); submitBtn.textContent='Tambah Akun';
-    addForm.append(emailInput,sourceSelect,statusSelect,submitBtn);
-    accountsDiv.appendChild(addForm);
-    phoneDiv.appendChild(accountsDiv);
-    container.appendChild(phoneDiv);
+    addForm.append(emailInput,statusSelect,submitBtn);
+    accDiv.appendChild(addForm);
+
+    unitDiv.appendChild(accDiv);
+    container.appendChild(unitDiv);
   });
 }
 
 // ===== EDIT FORM =====
-function showEditForm(pIndex,aIndex,accDiv,acc){
-  if(accDiv.querySelector('.edit-form')) return;
+function showEditForm(uIndex,aIndex,accItem,acc){
+  if(accItem.querySelector('.edit-form')) return;
   const form=document.createElement('form'); form.className='edit-form';
   form.onsubmit=e=>{
     e.preventDefault();
     const newStatus=form.querySelector('.status').value;
-    const newSource=form.querySelector('.source').value;
-    const newPhone=parseInt(form.querySelector('.phoneSelect').value);
-    const buy=form.querySelector('.buy')?.value;
-    const sell=form.querySelector('.sell')?.value;
-
-    let accountData={...acc,status:newStatus,source:newSource};
-    if(newSource==='beli'){ accountData.buy=buy||0; accountData.sell=sell||0; }
-
-    if(newPhone!==pIndex){
-      data.phones[newPhone].accounts.push(accountData);
-      data.phones[pIndex].accounts.splice(aIndex,1);
-    }else{
-      data.phones[pIndex].accounts[aIndex]=accountData;
+    const newUnit=parseInt(form.querySelector('.unitSelect').value);
+    acc.status=newStatus;
+    if(newUnit!==uIndex){
+      const moved={...acc};
+      data.units[newUnit].accounts.push(moved);
+      data.units[uIndex].accounts.splice(aIndex,1);
     }
-    saveData();
-    renderPhones();
+    saveData(); renderUnits();
   };
-
   const statusSelect=document.createElement('select'); statusSelect.className='status';
-  statusSelect.innerHTML=`<option value="tersedia">Tersedia</option>
-                          <option value="sedang dikirim">Sedang Dikirim</option>
-                          <option value="terjual">Terjual</option>
-                          <option value="ditolak">Ditolak</option>`; statusSelect.value=acc.status;
-
-  const sourceSelect=document.createElement('select'); sourceSelect.className='source';
-  sourceSelect.innerHTML=`<option value="buat sendiri">Buat Sendiri</option>
-                          <option value="beli">Beli</option>`; sourceSelect.value=acc.source;
-
-  const phoneSelect=document.createElement('select'); phoneSelect.className='phoneSelect';
-  data.phones.forEach((ph,index)=>{ const opt=document.createElement('option'); opt.value=index; opt.textContent=ph.name;
-  if(index===pIndex) opt.selected=true; phoneSelect.appendChild(opt); });
-
-  const buyInput=document.createElement('input'); buyInput.placeholder='Harga Beli'; buyInput.className='buy'; buyInput.value=acc.buy||'';
-  const sellInput=document.createElement('input'); sellInput.placeholder='Harga Jual'; sellInput.className='sell'; sellInput.value=acc.sell||'';
-  sourceSelect.onchange=()=>{ 
-    if(sourceSelect.value==='beli'){ if(!form.contains(buyInput)) form.append(buyInput,sellInput); }
-    else{ if(form.contains(buyInput)) form.removeChild(buyInput);
-          if(form.contains(sellInput)) form.removeChild(sellInput);}
-  };
-  if(acc.source==='beli') form.append(buyInput,sellInput);
-
+  statusSelect.innerHTML=`<option value="tersedia">Tersedia</option><option value="sedang dikirim">Sedang Dikirim</option><option value="terjual">Terjual</option><option value="ditolak">Ditolak</option>`; statusSelect.value=acc.status;
+  const unitSelect=document.createElement('select'); unitSelect.className='unitSelect';
+  data.units.forEach((u,index)=>{ const opt=document.createElement('option'); opt.value=index; opt.textContent=u.name; if(index===uIndex) opt.selected=true; unitSelect.appendChild(opt); });
   const submitBtn=document.createElement('button'); submitBtn.textContent='Simpan';
-  form.append(statusSelect,sourceSelect,phoneSelect,submitBtn);
-  accDiv.appendChild(form);
+  form.append(statusSelect,unitSelect,submitBtn);
+  accItem.appendChild(form);
 }
 
-// ===== TAMBAH HP =====
-document.getElementById('addPhoneForm').addEventListener('submit',e=>{
+// ===== TAMBAH UNIT =====
+document.getElementById('addUnitForm').addEventListener('submit',e=>{
   e.preventDefault();
-  const name=document.getElementById('phoneName').value.trim();
-  if(!name) return;
-  data.phones.push({name,accounts:[]});
-  saveData();
-  renderPhones();
+  const name=document.getElementById('unitName').value.trim();
+  const type=document.getElementById('unitType').value;
+  if(!name || !type) return;
+  data.units.push({name,type,accounts:[]}); saveData(); renderUnits();
   e.target.reset();
 });
 
 // ===== INIT =====
-renderPhones();
+renderUnits();
 </script>
 </body>
 </html>
