@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Manajemen Akun Gmail - Versi Upgrade</title>
+<title>Manajemen Akun Gmail Lengkap</title>
 <style>
   body { font-family: Arial, sans-serif; margin: 10px; padding-bottom: 50px; }
   h1 { text-align: center; margin-bottom: 20px; }
@@ -14,9 +14,11 @@
   .account-info { display: flex; align-items: center; flex-wrap: wrap; gap: 5px; }
   .status { padding: 2px 6px; border-radius: 4px; color: #fff; font-size: 12px; }
   .tersedia { background-color: green; }
+  .sedang-dikirim { background-color: orange; }
   .terjual { background-color: gray; }
   .ditolak { background-color: red; }
   .source { font-size: 12px; padding: 2px 6px; border-radius: 4px; background: #007bff; color: #fff; }
+  .price { font-size:12px; padding:2px 6px; border-radius:4px; background:#28a745; color:#fff; }
   button, select, input { margin: 2px 0; }
   input, select, button { width: 100%; padding: 6px; border-radius: 4px; border: 1px solid #ccc; box-sizing: border-box; }
   .form-inline { display: flex; flex-direction: column; gap: 5px; margin-top: 5px; }
@@ -30,7 +32,7 @@
 </head>
 <body>
 
-<h1>Manajemen Akun Gmail</h1>
+<h1>Manajemen Akun Gmail Lengkap</h1>
 
 <!-- Form tambah HP -->
 <form id="addPhoneForm" class="form-inline">
@@ -43,30 +45,29 @@
 <script>
 // ===== DATA & LOCALSTORAGE =====
 let data = JSON.parse(localStorage.getItem('gmailManager')) || { phones: [] };
-
-function saveData() { localStorage.setItem('gmailManager', JSON.stringify(data)); }
+function saveData(){ localStorage.setItem('gmailManager', JSON.stringify(data)); }
 
 // ===== RENDER =====
-function renderPhones() {
+function renderPhones(){
   const container = document.getElementById('phonesContainer');
   container.innerHTML = '';
-  
-  data.phones.forEach((phone, pIndex) => {
+
+  data.phones.forEach((phone,pIndex)=>{
     const phoneDiv = document.createElement('div');
     phoneDiv.className = 'phone';
 
     const header = document.createElement('div');
     header.className = 'phone-header';
     header.innerHTML = `${phone.name} <span>${phone.accounts.length} akun</span>`;
-    header.onclick = () => {
+    header.onclick = ()=> {
       const accDiv = phoneDiv.querySelector('.accounts');
-      accDiv.style.display = accDiv.style.display === 'none' ? 'block' : 'none';
+      accDiv.style.display = accDiv.style.display==='none'?'block':'none';
     };
 
-    // Tombol hapus HP
+    // tombol hapus HP
     const delHPBtn = document.createElement('button');
     delHPBtn.textContent = 'Hapus HP';
-    delHPBtn.onclick = e => {
+    delHPBtn.onclick = e=>{
       e.stopPropagation();
       if(confirm(`Hapus HP "${phone.name}" beserta semua akun?`)){
         data.phones.splice(pIndex,1);
@@ -81,7 +82,7 @@ function renderPhones() {
     accountsDiv.className = 'accounts';
 
     // list akun
-    phone.accounts.forEach((acc, aIndex) => {
+    phone.accounts.forEach((acc,aIndex)=>{
       const accDiv = document.createElement('div');
       accDiv.className = 'account';
 
@@ -90,26 +91,31 @@ function renderPhones() {
       const emailSpan = document.createElement('span');
       emailSpan.textContent = acc.email;
       const statusSpan = document.createElement('span');
-      statusSpan.className = 'status ' + acc.status;
+      statusSpan.className = 'status '+(acc.status==='sedang dikirim'?'sedang-dikirim':acc.status);
       statusSpan.textContent = acc.status;
       const sourceSpan = document.createElement('span');
-      sourceSpan.className = 'source';
-      sourceSpan.textContent = acc.source;
+      sourceSpan.className='source';
+      sourceSpan.textContent=acc.source;
+      const priceSpan = document.createElement('span');
+      priceSpan.className='price';
+      if(acc.source==='beli'){
+        priceSpan.textContent=`Beli:${acc.buy||'-'} / Jual:${acc.sell||'-'}`;
+      }
 
-      infoDiv.append(emailSpan, statusSpan, sourceSpan);
+      infoDiv.append(emailSpan,statusSpan,sourceSpan,priceSpan);
 
       const btnDiv = document.createElement('div');
 
       // Edit akun
       const editBtn = document.createElement('button');
-      editBtn.textContent = 'Edit';
-      editBtn.onclick = () => showEditForm(pIndex, aIndex, accDiv, acc);
+      editBtn.textContent='Edit';
+      editBtn.onclick = ()=>showEditForm(pIndex,aIndex,accDiv,acc);
       btnDiv.appendChild(editBtn);
 
       // Hapus akun manual
-      const delBtn = document.createElement('button');
-      delBtn.textContent = 'Hapus';
-      delBtn.onclick = () => {
+      const delBtn=document.createElement('button');
+      delBtn.textContent='Hapus';
+      delBtn.onclick=()=>{
         if(confirm(`Hapus akun "${acc.email}"?`)){
           data.phones[pIndex].accounts.splice(aIndex,1);
           saveData();
@@ -118,11 +124,11 @@ function renderPhones() {
       };
       btnDiv.appendChild(delBtn);
 
-      // Hapus otomatis jika terjual
-      if(acc.status === 'tersedia'){
+      // Hapus otomatis jika tersedia + langsung dijual
+      if(acc.status==='tersedia'){
         const sellBtn = document.createElement('button');
-        sellBtn.textContent = 'Terjual';
-        sellBtn.onclick = () => {
+        sellBtn.textContent='Terjual';
+        sellBtn.onclick=()=>{
           data.phones[pIndex].accounts.splice(aIndex,1);
           saveData();
           renderPhones();
@@ -130,47 +136,54 @@ function renderPhones() {
         btnDiv.appendChild(sellBtn);
       }
 
-      accDiv.append(infoDiv, btnDiv);
+      accDiv.append(infoDiv,btnDiv);
       accountsDiv.appendChild(accDiv);
     });
 
     // Form tambah akun inline per HP
-    const addForm = document.createElement('form');
-    addForm.className = 'form-inline';
-    addForm.onsubmit = e => {
+    const addForm=document.createElement('form');
+    addForm.className='form-inline';
+    addForm.onsubmit=e=>{
       e.preventDefault();
       const email = addForm.querySelector('.email').value.trim();
       const source = addForm.querySelector('.source').value;
       const status = addForm.querySelector('.status').value;
+      const buy = addForm.querySelector('.buy')?.value;
+      const sell = addForm.querySelector('.sell')?.value;
       if(!email || !source || !status) return;
-      data.phones[pIndex].accounts.push({email,source,status});
+      const newAcc={email,source,status};
+      if(source==='beli'){
+        newAcc.buy=buy||0;
+        newAcc.sell=sell||0;
+      }
+      data.phones[pIndex].accounts.push(newAcc);
       saveData();
       renderPhones();
     };
 
-    const emailInput = document.createElement('input');
-    emailInput.placeholder = 'Email Gmail';
-    emailInput.className = 'email';
-    emailInput.required = true;
+    const emailInput=document.createElement('input'); emailInput.placeholder='Email Gmail'; emailInput.className='email'; emailInput.required=true;
+    const sourceSelect=document.createElement('select'); sourceSelect.className='source'; sourceSelect.required=true;
+    sourceSelect.innerHTML=`<option value="">Asal Akun</option>
+                            <option value="buat sendiri">Buat Sendiri</option>
+                            <option value="beli">Beli</option>`;
+    const statusSelect=document.createElement('select'); statusSelect.className='status'; statusSelect.required=true;
+    statusSelect.innerHTML=`<option value="">Status</option>
+                            <option value="tersedia">Tersedia</option>
+                            <option value="sedang dikirim">Sedang Dikirim</option>
+                            <option value="terjual">Terjual</option>
+                            <option value="ditolak">Ditolak</option>`;
+    // input harga beli/jual muncul jika pilih beli
+    const buyInput=document.createElement('input'); buyInput.placeholder='Harga Beli'; buyInput.className='buy';
+    const sellInput=document.createElement('input'); sellInput.placeholder='Harga Jual'; sellInput.className='sell';
 
-    const sourceSelect = document.createElement('select');
-    sourceSelect.className = 'source';
-    sourceSelect.required = true;
-    sourceSelect.innerHTML = `<option value="">Asal Akun</option>
-                              <option value="buat sendiri">Buat Sendiri</option>
-                              <option value="beli">Beli</option>`;
+    sourceSelect.onchange=()=>{ 
+      if(sourceSelect.value==='beli'){ addForm.append(buyInput,sellInput); }
+      else{ if(addForm.contains(buyInput)) addForm.removeChild(buyInput);
+            if(addForm.contains(sellInput)) addForm.removeChild(sellInput); }
+    };
 
-    const statusSelect = document.createElement('select');
-    statusSelect.className = 'status';
-    statusSelect.required = true;
-    statusSelect.innerHTML = `<option value="">Status</option>
-                              <option value="tersedia">Tersedia</option>
-                              <option value="ditolak">Ditolak</option>`;
-
-    const submitBtn = document.createElement('button');
-    submitBtn.textContent = 'Tambah Akun';
-    addForm.append(emailInput, sourceSelect, statusSelect, submitBtn);
-
+    const submitBtn=document.createElement('button'); submitBtn.textContent='Tambah Akun';
+    addForm.append(emailInput,sourceSelect,statusSelect,submitBtn);
     accountsDiv.appendChild(addForm);
     phoneDiv.appendChild(accountsDiv);
     container.appendChild(phoneDiv);
@@ -180,61 +193,62 @@ function renderPhones() {
 // ===== EDIT FORM =====
 function showEditForm(pIndex,aIndex,accDiv,acc){
   if(accDiv.querySelector('.edit-form')) return;
-
-  const form = document.createElement('form');
-  form.className = 'edit-form';
-  form.onsubmit = e => {
+  const form=document.createElement('form'); form.className='edit-form';
+  form.onsubmit=e=>{
     e.preventDefault();
-    const newStatus = form.querySelector('.status').value;
-    const newSource = form.querySelector('.source').value;
-    const newPhone = parseInt(form.querySelector('.phoneSelect').value);
+    const newStatus=form.querySelector('.status').value;
+    const newSource=form.querySelector('.source').value;
+    const newPhone=parseInt(form.querySelector('.phoneSelect').value);
+    const buy=form.querySelector('.buy')?.value;
+    const sell=form.querySelector('.sell')?.value;
 
-    let accountData = {...acc, status:newStatus, source:newSource};
-    if(newPhone !== pIndex){
+    let accountData={...acc,status:newStatus,source:newSource};
+    if(newSource==='beli'){ accountData.buy=buy||0; accountData.sell=sell||0; }
+
+    if(newPhone!==pIndex){
       data.phones[newPhone].accounts.push(accountData);
       data.phones[pIndex].accounts.splice(aIndex,1);
     }else{
-      data.phones[pIndex].accounts[aIndex] = accountData;
+      data.phones[pIndex].accounts[aIndex]=accountData;
     }
     saveData();
     renderPhones();
   };
 
-  const statusSelect = document.createElement('select');
-  statusSelect.className = 'status';
-  statusSelect.innerHTML = `<option value="tersedia">Tersedia</option>
-                            <option value="terjual">Terjual</option>
-                            <option value="ditolak">Ditolak</option>`;
-  statusSelect.value = acc.status;
+  const statusSelect=document.createElement('select'); statusSelect.className='status';
+  statusSelect.innerHTML=`<option value="tersedia">Tersedia</option>
+                          <option value="sedang dikirim">Sedang Dikirim</option>
+                          <option value="terjual">Terjual</option>
+                          <option value="ditolak">Ditolak</option>`; statusSelect.value=acc.status;
 
-  const sourceSelect = document.createElement('select');
-  sourceSelect.className = 'source';
-  sourceSelect.innerHTML = `<option value="buat sendiri">Buat Sendiri</option>
-                            <option value="beli">Beli</option>`;
-  sourceSelect.value = acc.source;
+  const sourceSelect=document.createElement('select'); sourceSelect.className='source';
+  sourceSelect.innerHTML=`<option value="buat sendiri">Buat Sendiri</option>
+                          <option value="beli">Beli</option>`; sourceSelect.value=acc.source;
 
-  const phoneSelect = document.createElement('select');
-  phoneSelect.className = 'phoneSelect';
-  data.phones.forEach((ph,index)=>{
-    const opt = document.createElement('option');
-    opt.value = index;
-    opt.textContent = ph.name;
-    if(index === pIndex) opt.selected = true;
-    phoneSelect.appendChild(opt);
-  });
+  const phoneSelect=document.createElement('select'); phoneSelect.className='phoneSelect';
+  data.phones.forEach((ph,index)=>{ const opt=document.createElement('option'); opt.value=index; opt.textContent=ph.name;
+  if(index===pIndex) opt.selected=true; phoneSelect.appendChild(opt); });
 
-  const submitBtn = document.createElement('button');
-  submitBtn.textContent = 'Simpan';
-  form.append(statusSelect, sourceSelect, phoneSelect, submitBtn);
+  const buyInput=document.createElement('input'); buyInput.placeholder='Harga Beli'; buyInput.className='buy'; buyInput.value=acc.buy||'';
+  const sellInput=document.createElement('input'); sellInput.placeholder='Harga Jual'; sellInput.className='sell'; sellInput.value=acc.sell||'';
+  sourceSelect.onchange=()=>{ 
+    if(sourceSelect.value==='beli'){ if(!form.contains(buyInput)) form.append(buyInput,sellInput); }
+    else{ if(form.contains(buyInput)) form.removeChild(buyInput);
+          if(form.contains(sellInput)) form.removeChild(sellInput);}
+  };
+  if(acc.source==='beli') form.append(buyInput,sellInput);
+
+  const submitBtn=document.createElement('button'); submitBtn.textContent='Simpan';
+  form.append(statusSelect,sourceSelect,phoneSelect,submitBtn);
   accDiv.appendChild(form);
 }
 
-// ===== EVENT TAMBAH HP =====
+// ===== TAMBAH HP =====
 document.getElementById('addPhoneForm').addEventListener('submit',e=>{
   e.preventDefault();
-  const name = document.getElementById('phoneName').value.trim();
+  const name=document.getElementById('phoneName').value.trim();
   if(!name) return;
-  data.phones.push({name, accounts:[]});
+  data.phones.push({name,accounts:[]});
   saveData();
   renderPhones();
   e.target.reset();
